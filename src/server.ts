@@ -7,12 +7,13 @@ import jwt from 'jsonwebtoken'
 import UC from './UsuarioComum.DAOclass.js'
 import { SenhaIncorreta, ServicoIndisponivel, UsuarioComumNaoEncontrado, NenhumUsuarioComumEncontrado, ResultadoNunhumEncontrado, ViolacaoUnique } from './ErrorList.js'
 
-dotenv.config()
-const { PORT_SERVICE, JWT_UC_ACCESS_KEY, JWT_UE_ACCESS_KEY, JWT_UA_ACCESS_KEY, JWT_EXPIRATION_TIME, SALT_ROUNDS } = process.env
-
 const appServer = express()
 appServer.use(express.json())
 appServer.use(cors())
+
+dotenv.config()
+const { JWT_UC_ACCESS_KEY, JWT_UE_ACCESS_KEY, JWT_UA_ACCESS_KEY, JWT_EXPIRATION_TIME, SALT_ROUNDS } = process.env
+const PORT = process.env.PORT || 6002
 
 await UC.sync()
 
@@ -193,4 +194,4 @@ appServer.get('/consultar/empr', verificaToken, async (req, res) => {
     }
 })
 
-appServer.listen(PORT_SERVICE, () => console.log(`Usuário Comum. Executando Porta ${PORT_SERVICE}`))
+appServer.listen(PORT, () => console.log(`Usuário Comum. Executando Porta ${PORT}`))
