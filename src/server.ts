@@ -5,7 +5,17 @@ import bcrypt from 'bcrypt'
 import { Op } from 'sequelize'
 import jwt from 'jsonwebtoken'
 import UC from './UsuarioComum.DAOclass.js'
-import { SenhaIncorreta, ServicoIndisponivel, UsuarioComumNaoEncontrado, NenhumUsuarioComumEncontrado, ResultadoNunhumEncontrado, ViolacaoUnique } from './ErrorList.js'
+import { 
+    SenhaIncorreta, 
+    ServicoIndisponivel, 
+    UsuarioComumNaoEncontrado, 
+    NenhumUsuarioComumEncontrado, 
+    ResultadoNunhumEncontrado, 
+    ViolacaoUnique,
+    TokenExpirado,
+    TokenInvalido,
+    TokenNaoFornecido
+} from './ErrorList.js'
 
 const appServer = express()
 appServer.use(express.json())
@@ -20,7 +30,8 @@ await UC.sync()
 const verificaToken = (req: any, res: any, next: any) => {
     const token = req.headers.authorization?.split(' ')
     if(!token){
-        return res.status(401).send('Token não fornecido')
+        res.status(400).send(new TokenNaoFornecido())
+        return
     }
     let chave: string | undefined
     switch(req.query.tipoUsuario){
@@ -36,7 +47,15 @@ const verificaToken = (req: any, res: any, next: any) => {
     }
     jwt.verify(token[1], chave!, (err: any, result: any) => {
         if(err){
-            return res.status(403).send('Token Inválido')
+            console.error("Erro na verificação do Token", err)
+            switch(err.name){
+                case 'TokenExpiredError':
+                    res.status(401).send(new TokenExpirado())
+                    return
+                case 'JsonWebTokenError':
+                    res.status(401).send(new TokenInvalido())
+                    return
+            }
         }
         req.usuario = result.usuario
         next()
@@ -45,38 +64,34 @@ const verificaToken = (req: any, res: any, next: any) => {
 
 appServer.post('/cadastrar', async (req, res) => {
     const { email, senha, nome_completo, ocupacao, pais_origem } = req.body
-    try{
-        let senhaHash: any, sucesso = false
-        while(!sucesso){
-            try{
-                senhaHash = await bcrypt.hash(senha, +SALT_ROUNDS!)
-                sucesso = true
-            }
-            catch(err){
-                console.error("Erro no bcrypt.hash()", err)
-            }
-        }
+    let senhaHash: any, sucesso = false
+    while(!sucesso){
         try{
-            const novoUC = await UC.create({ email, senha: senhaHash, nome_completo, ocupacao, pais_origem})
-            if(novoUC){
-                res.status(201).send('Usuário Comum Cadastrado com Sucesso')
-            }
-            else{
-                res.status(503).send(new ServicoIndisponivel())
-            }
+            senhaHash = await bcrypt.hash(senha, +SALT_ROUNDS!)
+            sucesso = true
         }
-        catch(err: any){
-            console.error("Erro no UE.create()", err)
-            switch(err.errors[0].type){
-                case 'unique violation':
-                    res.status(409).send(new ViolacaoUnique())
-                    break
-            }
+        catch(err){
+            console.error("Erro no bcrypt.hash()", err)
         }
     }
-    catch(err){
-        console.error("Erro na operação 'Cadastrar' no serviço de Usuários Comuns", err)
-        return res.send(err)
+    try{
+        const novoUC = await UC.create({ email, senha: senhaHash, nome_completo, ocupacao, pais_origem})
+        if(novoUC){
+            res.status(201).send('Usuário Comum Cadastrado com Sucesso')
+        }
+        else{
+            res.status(503).send(new ServicoIndisponivel())
+        }
+    }
+    catch(err: any){
+        console.error("Erro no UE.create()", err)
+        switch(err.errors[0].type){
+            case 'unique violation':
+                res.status(409).send(new ViolacaoUnique())
+                break
+            default:
+                res.status(503).send(new ServicoIndisponivel())
+        }
     }
 })
 
@@ -108,7 +123,7 @@ appServer.get('/login', async (req, res) => {
     }
     catch(err){
         console.error("Erro na operação 'Login' no serviço de Usuários Comuns", err)
-        res.send(err)
+        res.status(503).send(new ServicoIndisponivel())
     }
 })
 
@@ -124,7 +139,7 @@ appServer.get('/acessa-info', verificaToken, async (req: any, res: any) => {
     }
     catch(err){
         console.error("Erro na operação 'AcessaInfo' no serviço de Usuários Comuns", err)
-        res.send(err)
+        res.status(503).send(new ServicoIndisponivel())
     }
 })
 
@@ -140,7 +155,7 @@ appServer.get('/ver-todos', verificaToken, async (_req, res) => {
     }
     catch(err){
         console.error("Erro na operação 'VerTodos' no serviço de Usuários Comuns", err)
-        res.send(err)
+        res.status(503).send(new ServicoIndisponivel())
     }
 })
 
@@ -166,7 +181,7 @@ appServer.get('/consultar/adm', verificaToken, async (req, res) => {
     }
     catch(err){
         console.error("Erro na operação 'Consultar' no serviço de Usuários Comuns", err)
-        res.send(err)
+        res.status(503).send(new ServicoIndisponivel())
     }
 })
 
@@ -190,7 +205,7 @@ appServer.get('/consultar/empr', verificaToken, async (req, res) => {
     }
     catch(err){
         console.error("Erro na operação 'Consultar' no serviço de Usuários Comuns", err)
-        res.send(err)
+        res.status(503).send(new ServicoIndisponivel())
     }
 })
 

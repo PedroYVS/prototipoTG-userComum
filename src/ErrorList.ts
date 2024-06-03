@@ -33,6 +33,27 @@ export class ResultadoNunhumEncontrado extends Error {
         this.message = 'Nenhum resultado encontrado'
     }
 }
+export class TokenNaoFornecido extends Error {
+    constructor(){
+        super()
+        this.name = 'TokenNaoFornecido'
+        this.message = 'Token não fornecido'
+    }
+}
+export class TokenInvalido extends Error {
+    constructor(){
+        super()
+        this.name = 'TokenInvalido'
+        this.message = 'Token Inválido'
+    }
+}
+export class TokenExpirado extends Error {
+    constructor(){
+        super()
+        this.name = 'TokenExpirado'
+        this.message = 'Token Expirado'
+    }
+}
 export class ViolacaoUnique extends Error {
     constructor(){
         super()
